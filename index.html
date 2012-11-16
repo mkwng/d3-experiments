@@ -3,7 +3,16 @@
 
 <script src="js/vendor/d3.v2.min.js"></script>
 <script>
+var employees = [];
 
+String.prototype.insert = function (index, string) {
+  if (index > 0)
+    return this.substring(0, index) + string + this.substring(index, this.length);
+  else
+    return string + this;
+};
+
+//Employee Class
 function Employee(newName) {
 	var email,name,team,title,start,end;
 
@@ -11,14 +20,37 @@ function Employee(newName) {
 	console.log("Created Person: " + name);
 }
 
+//Retrieve the file list of all the csvs in the data directory, then run a callback on them
 function retrieveList(url,callback) {
 	d3.csv(url,function(data) {
 		callback(data);
 	});
 }
 
-function parseList(fileNames) {
-	console.log(fileNames);
+//Parse a file list, and then update the employee array with the data within
+function parseList(filenames) {
+	filenames.forEach(function(d) {
+		d3.csv("data/"+d.filename,function(data) {
+
+			//Let's parse the date string (the file name) into a Unix timestamp
+			var dateString = (d.filename.substr(0, d.filename.lastIndexOf('.')) || d.filename).insert(4,"-").insert(7,"-").insert(10," 00:00:00");
+			var date = Date.parse(dateString);
+
+			updateEmployees(data,date);
+		});
+	});
+}
+
+//Input: new list of employees and the date stamp; Update everything in the employee array
+function updateEmployees(newEmployees,date) {
+	console.log(date);
+
+	//Ready to go through the data from the CSV file
+	newEmployees.forEach(function(d) {
+		console.log(d.EMAIL);
+	});
+
+
 }
 
 //Run this
