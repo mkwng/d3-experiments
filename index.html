@@ -22,7 +22,11 @@ function Employee(EMAIL,NAME,DATE) {
 	this.name = NAME;
 	this.start = DATE;
 	this.end = DATE;
-	console.log("Created Person: " + this.name);
+
+	// console.log("Created person: "+this.name);
+}
+Employee.prototype.logInfo = function() {
+	console.log(this.name + " started on " + this.start + "and ended on " + this.end + ".");
 }
 
 //Retrieve the file list of all the csvs in the data directory, then run a callback on them
@@ -55,9 +59,18 @@ function updateEmployees(newEmployees,date) {
 	newEmployees.forEach(function(d) {
 		// console.log(d.EMAIL);
 		var newEmployee = true;
+		//Assume this employee is new until proven otherwise.
 		for (var i = 0, len = employees.length; i < len; i++) {
-			if(employees[i].email == d.EMAIL) newEmployee = false;
+			//Is this email already in our array? 
+			//If so, they are not new. Let's update their start/end date.
+			if(employees[i].email == d.EMAIL) {
+				newEmployee = false;
+				if(employees[i].start > date) employees[i].start = date;
+				else if(employees[i].end < date) employees[i].end = date;
+				break;
+			}
 		}
+		//Turns out they are new? Let's add them to our array
 		if(newEmployee) employees.push(new Employee(d.EMAIL,d.NAME,date));
 	});
 
@@ -66,6 +79,8 @@ function updateEmployees(newEmployees,date) {
 
 //Run this
 retrieveList("data/list.csv",parseList);
+
+// console.log(employees);
 
 </script>
 <body>
