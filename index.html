@@ -5,6 +5,8 @@
 <script>
 var employees = [];
 
+//Inserting strings at certain indices
+//http://stackoverflow.com/questions/4313841/javascript-how-can-i-insert-a-string-at-a-specific-index
 String.prototype.insert = function (index, string) {
   if (index > 0)
     return this.substring(0, index) + string + this.substring(index, this.length);
@@ -13,11 +15,14 @@ String.prototype.insert = function (index, string) {
 };
 
 //Employee Class
-function Employee(newName) {
+function Employee(EMAIL,NAME,DATE) {
 	var email,name,team,title,start,end;
 
-	this.name = newName;
-	console.log("Created Person: " + name);
+	this.email = EMAIL;
+	this.name = NAME;
+	this.start = DATE;
+	this.end = DATE;
+	console.log("Created Person: " + this.name);
 }
 
 //Retrieve the file list of all the csvs in the data directory, then run a callback on them
@@ -33,6 +38,7 @@ function parseList(filenames) {
 		d3.csv("data/"+d.filename,function(data) {
 
 			//Let's parse the date string (the file name) into a Unix timestamp
+			//http://stackoverflow.com/questions/11509814/date-string-conversion-to-unix-timestamp-in-javascript-jquery
 			var dateString = (d.filename.substr(0, d.filename.lastIndexOf('.')) || d.filename).insert(4,"-").insert(7,"-").insert(10," 00:00:00");
 			var date = Date.parse(dateString);
 
@@ -43,11 +49,16 @@ function parseList(filenames) {
 
 //Input: new list of employees and the date stamp; Update everything in the employee array
 function updateEmployees(newEmployees,date) {
-	console.log(date);
+	// console.log(date);
 
-	//Ready to go through the data from the CSV file
+	//Ready to go through the list of new employees
 	newEmployees.forEach(function(d) {
-		console.log(d.EMAIL);
+		// console.log(d.EMAIL);
+		var newEmployee = true;
+		for (var i = 0, len = employees.length; i < len; i++) {
+			if(employees[i].email == d.EMAIL) newEmployee = false;
+		}
+		if(newEmployee) employees.push(new Employee(d.EMAIL,d.NAME,date));
 	});
 
 
