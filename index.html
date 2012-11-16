@@ -4,9 +4,25 @@
 <script src="js/vendor/d3.v2.min.js"></script>
 <script>
 
-	d3.csv("data/list.csv",function(data) {
-		console.log(data);
+function Employee(newName) {
+	var email,name,team,title,start,end;
+
+	this.name = newName;
+	console.log("Created Person: " + name);
+}
+
+function retrieveList(url,callback) {
+	d3.csv(url,function(data) {
+		callback(data);
 	});
+}
+
+function parseList(fileNames) {
+	console.log(fileNames);
+}
+
+//Run this
+retrieveList("data/list.csv",parseList);
 
 </script>
 <body>
