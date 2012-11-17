@@ -38,6 +38,9 @@ function retrieveList(url,callback) {
 
 //Parse a file list, and then update the employee array with the data within
 function parseList(filenames) {
+	//Only fire the init() function when you've finished running through all of them
+	//Shane Berry told me to do it.
+	var finishedCounter = 0;
 	filenames.forEach(function(d) {
 		d3.csv("data/"+d.filename,function(data) {
 
@@ -47,6 +50,10 @@ function parseList(filenames) {
 			var date = Date.parse(dateString);
 
 			updateEmployees(data,date);
+
+			//Is this the last in the series of CSVs? If not, add one and move on. If it is, let's continue!
+			if(++finishedCounter>=filenames.length) init();
+			// else console.log("not yet")
 		});
 	});
 }
@@ -80,7 +87,11 @@ function updateEmployees(newEmployees,date) {
 //Run this
 retrieveList("data/list.csv",parseList);
 
-// console.log(employees);
+function init() {
+	// console.log("YES! Finally!");
+	console.log(employees);
+}
+
 
 </script>
 <body>
