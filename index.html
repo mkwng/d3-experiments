@@ -20,6 +20,7 @@
 <script src="js/vendor/d3.v2.min.js"></script>
 <script>
 var employees = [];
+var svg = d3.select("#chart");
 
 //Inserting strings at certain indices
 //http://stackoverflow.com/questions/4313841/javascript-how-can-i-insert-a-string-at-a-specific-index
@@ -69,6 +70,7 @@ function parseList(filenames) {
 
 			//Is this the last in the series of CSVs? If not, add one and move on. If it is, let's continue!
 			if(++finishedCounter>=filenames.length) init();
+			else progressLoader(100*finishedCounter/filenames.length);
 		});
 	});
 }
@@ -92,8 +94,27 @@ function updateEmployees(newEmployees,date) {
 		//Turns out they are new? Let's add them to our array
 		if(newEmployee) employees.push(new Employee(d.EMAIL,d.NAME,date));
 	});
+}
 
 
+var arc = d3.svg.arc()
+    .outerRadius(100)
+    .innerRadius(90)
+    .startAngle(0)
+    .endAngle(0);
+var progressArc = svg.append("path")
+	.attr("transform", "translate(512,386)")
+	.classed("progress",true)
+	.attr("d",arc)
+	.style("fill","#ffffff");
+var piScale = d3.scale.linear()
+	.domain([0,100])
+	.range([0,2*Math.PI]);
+function progressLoader(percent) {
+	// console.log("Loaded "+percent+"%");
+	arc.endAngle(piScale(percent));
+	// console.log(piScale(percent));
+	progressArc.attr("d",arc);
 }
 
 //Run this
@@ -101,7 +122,13 @@ retrieveList("data/list.csv",parseList);
 
 function init() {
 
+	progressArc.remove();
 
+	function compareStart(a,b) {
+		var start = a.start-b.start;
+		return start == 0 ? a.end-b.end : start;
+	}
+	employees.sort(compareStart);
     var cx = 100;
     var cy = 0;
     var chartHeight = 768;
@@ -121,7 +148,6 @@ function init() {
 		.range([0,chartHeight]);
 
 	//Select the SVG element, append groups
-	var svg = d3.select("#chart");
 	var bars = svg.selectAll("g.bar")
 		.data(employees);
 	//Enter the data, apply class, transform it
