@@ -1,5 +1,18 @@
 <html>
+<head>
+	<style>
+		svg {
+			width: 1024px;
+			height: 768px;
+		}
+	</style>
+</head>
 <body>
+
+
+  <svg id="chart">
+  </svg>
+
 
 <script src="js/vendor/d3.v2.min.js"></script>
 <script>
@@ -53,20 +66,16 @@ function parseList(filenames) {
 
 			//Is this the last in the series of CSVs? If not, add one and move on. If it is, let's continue!
 			if(++finishedCounter>=filenames.length) init();
-			// else console.log("not yet")
 		});
 	});
 }
 
 //Input: new list of employees and the date stamp; Update everything in the employee array
 function updateEmployees(newEmployees,date) {
-	// console.log(date);
-
 	//Ready to go through the list of new employees
 	newEmployees.forEach(function(d) {
-		// console.log(d.EMAIL);
-		var newEmployee = true;
 		//Assume this employee is new until proven otherwise.
+		var newEmployee = true;
 		for (var i = 0, len = employees.length; i < len; i++) {
 			//Is this email already in our array? 
 			//If so, they are not new. Let's update their start/end date.
@@ -88,11 +97,50 @@ function updateEmployees(newEmployees,date) {
 retrieveList("data/list.csv",parseList);
 
 function init() {
-	// console.log("YES! Finally!");
-	console.log(employees);
+
+
+    var cx = 100;
+    var cy = 100;
+    var chartHeight = 300;
+    var barWidth = 20;
+
+    var minTime = 0;
+    var maxTime = d3.max(employees, function(d) { return d.end-d.start });
+    var yscale = d3.scale.linear()
+    	.domain([minTime,maxTime])
+    	.range([0,chartHeight]);
+
+	// console.log(employees);
+	var svg = d3.select("#chart");
+	var bars = svg.selectAll("g.bar")
+		.data(employees);
+	var barEnter = bars.enter()
+		.append("g")
+		.classed("bar",true)
+		.attr({
+			"transform": 	function(d,i) {
+								var x = i * 5;
+								var y = 100;
+								return "translate("+[x,y]+")";
+							}
+		});
+	barEnter.append("rect")
+        .attr("fill", "#00ff00")
+        .attr("height", 0);
+	var rects = bars.select("rect");
+
+	bars.select("rect")
+		.attr({
+			"width": 4,
+			"height": 		function(d,i) {
+								console.log(yscale(d.end-d.start))
+								return yscale(d.end-d.start);
+							}
+		});
+
 }
 
 
 </script>
 <body>
-</html
+</html>
