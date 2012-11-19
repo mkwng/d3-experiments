@@ -3,10 +3,10 @@
 	<style>
 		body{
 			background:#424446;
+			margin:0;
 		}
-		svg {
-			width: 1024px;
-			height: 768px;
+		svg#chart{
+			margin:0 auto;
 		}
 	</style>
 </head>
@@ -19,8 +19,44 @@
 
 <script src="js/vendor/d3.v2.min.js"></script>
 <script>
+
+/************************************************/
+/************************************************/
+/* Housekeeping */
+/************************************************/
+/************************************************/
+
+var svgWidth = window.innerWidth;
+var svgHeight = window.innerHeight;
+
 var employees = [];
-var svg = d3.select("#chart");
+var svg = d3.select("#chart").style({
+	"width": svgWidth,
+	"height": svgHeight
+});
+
+
+function sortByStart(employeeList) {
+	function compareStart(a,b) {
+		var start = a.start-b.start;
+		return start == 0 ? a.end-b.end : start;
+	}
+	return employeeList.sort(compareStart);
+}
+function sortByEnd(employeeList) {
+	function compareEnd(a,b) {
+		var end = a.end-b.end;
+		return end;
+	}
+	return employeeList.sort(compareEnd);
+}
+function sortByDuration(employeeList) {
+	function compareDuration(a,b) {
+		var duration = (a.start-a.end) - (b.start-b.end) 
+		return duration;
+	}
+	return employeeList.sort(compareDuration);
+}
 
 //Inserting strings at certain indices
 //http://stackoverflow.com/questions/4313841/javascript-how-can-i-insert-a-string-at-a-specific-index
@@ -40,11 +76,22 @@ function Employee(EMAIL,NAME,DATE) {
 	this.start = DATE;
 	this.end = DATE;
 
+
 	// console.log("Created person: "+this.name);
 }
 Employee.prototype.logInfo = function() {
 	console.log(this.name + " started on " + this.start + "and ended on " + this.end + ".");
 }
+Employee.prototype.clearOut = function() {
+	this.start = 0;
+	this.end = 0;
+}
+
+/************************************************/
+/************************************************/
+/* Retrieving and Parsing */
+/************************************************/
+/************************************************/
 
 //Retrieve the file list of all the csvs in the data directory, then run a callback on them
 function retrieveList(url,callback) {
@@ -56,7 +103,7 @@ function retrieveList(url,callback) {
 //Parse a file list, and then update the employee array with the data within
 function parseList(filenames) {
 	//Only fire the init() function when you've finished running through all of them
-	//Shane Berry told me to do it.
+	//@iamaracinghorse told me to do it.
 	var finishedCounter = 0;
 	filenames.forEach(function(d) {
 		d3.csv("data/"+d.filename,function(data) {
@@ -97,42 +144,54 @@ function updateEmployees(newEmployees,date) {
 }
 
 
-var arc = d3.svg.arc()
+/************************************************/
+/************************************************/
+/* Progress Bar */
+/************************************************/
+/************************************************/
+//Define the arc
+var arcProps = d3.svg.arc()
     .outerRadius(100)
     .innerRadius(90)
     .startAngle(0)
     .endAngle(0);
+//Create and style the arc
 var progressArc = svg.append("path")
-	.attr("transform", "translate(512,386)")
+	.attr({
+		"transform": 	function(d,i) {
+							var x = svgWidth/2;
+							var y = svgHeight/2;
+							// console.log(startScale(d.start-minStart));
+							return "translate("+[x,y]+")";
+						}
+	})
 	.classed("progress",true)
-	.attr("d",arc)
+	.attr("d",arcProps)
 	.style("fill","#ffffff");
+//Scaling percentage into pi scale
 var piScale = d3.scale.linear()
 	.domain([0,100])
 	.range([0,2*Math.PI]);
+//This is triggered by parseList() each time it finishes loading a CSV
 function progressLoader(percent) {
-	// console.log("Loaded "+percent+"%");
-	arc.endAngle(piScale(percent));
-	// console.log(piScale(percent));
-	progressArc.attr("d",arc);
+	arcProps.endAngle(piScale(percent));
+	progressArc.attr("d",arcProps);
 }
 
-//Run this
-retrieveList("data/list.csv",parseList);
 
-function init() {
 
-	progressArc.remove();
 
-	function compareStart(a,b) {
-		var start = a.start-b.start;
-		return start == 0 ? a.end-b.end : start;
-	}
-	employees.sort(compareStart);
-    var cx = 100;
-    var cy = 0;
-    var chartHeight = 768;
-    var barWidth = 5;
+/************************************************/
+/************************************************/
+/* Drawing the Bar Chart */
+/************************************************/
+/************************************************/
+function drawBars(cx,cy,chartHeight,barWidth) {
+
+	chartHeight = svgHeight;
+	barWidth = Math.floor(svgWidth/employees.length)-1;
+	cx = 0;
+	cy = 0;
 
     //Scaling the duration of employment to the chart height
     var minTime = d3.min(employees, function(d) { return d.end-d.start });
@@ -169,13 +228,116 @@ function init() {
         .attr("height", 0);
 	var rects = bars.select("rect");
 	//Set the attributes to reflect the data
-	bars.select("rect")
+	rects
 		.attr({
 			"width": barWidth,
 			"height": 		function(d,i) {
 								return rangeScale(d.end-d.start);
 							}
 		});
+
+	rects.on("mouseover", function() {
+        d3.select(this).attr("fill", "#ff6644")
+	}).on("mouseout", function() {
+        d3.select(this).attr("fill", "#F1F2F2")
+	});
+}
+
+function drawArcs() {
+
+    //Scaling the start date to the chart height
+    var minStart = d3.min(employees, function(d) { return d.start });
+    var maxEnd = d3.max(employees, function(d) { return d.end });
+	var startScale = d3.scale.linear()
+		.domain([minStart,maxEnd])
+		.range([Math.PI/2,2.5*Math.PI]);
+	var maxDimension = Math.min(svgWidth,svgHeight)/2;
+	var radiusScale = d3.scale.linear()
+		.domain([0,employees.length])
+		.range([0,maxDimension]);
+	// console.log(maxDimension,employees.length);
+
+
+	var arcProps = d3.svg.arc()
+	    .outerRadius(function(d,i) {return radiusScale(i+1)-1;})
+	    .innerRadius(function(d,i) {return radiusScale(i);})
+	    .startAngle(function(d,i) {return startScale(d.start);})
+	    .endAngle(function(d,i) {return startScale(d.end);});
+
+	//Select the SVG element, append groups
+	var arcs = svg.selectAll("g.arc")
+		.data(employees);
+	//Enter the data, apply class, transform it
+	var arcEnter = arcs.enter()
+		.append("g")
+		.classed("arc",true)
+		.attr({
+			"transform": 	function(d,i) {
+								var x = svgWidth/2;
+								var y = svgHeight/2;
+								// console.log(startScale(d.start-minStart));
+								return "translate("+[x,y]+")";
+							}
+		});
+
+	//Append SVG rects to each data point
+	arcEnter.append("path")
+        .attr("fill", "#F1F2F2")
+		.attr("d",arcProps);
+	var paths = arcs.select("path");
+	//Set the attributes to reflect the data
+	// paths
+	// 	.attr("d",arcProps);
+
+	paths.on("mouseover", function() {
+        d3.select(this).attr("fill", "#ff6644")
+	}).on("mouseout", function() {
+        d3.select(this).attr("fill", "#F1F2F2")
+	});
+
+}
+
+/************************************************/
+/************************************************/
+/* Analysis */
+/************************************************/
+/************************************************/
+function calcHalflife(employeeList) {
+	var total = employeeList.length;
+	console.log(total);
+	var employeeStart = sortByStart(employeeList);
+	var employeeEnd = sortByEnd(employeeList);
+	var employeeDuration = sortByDuration(employeeList);
+
+}
+
+/************************************************/
+/************************************************/
+/* Run this */
+/************************************************/
+/************************************************/
+
+
+//This code basically kicks off the whole thing.
+retrieveList("data/list.csv",parseList);
+
+//This is triggered when all CSV files are loaded.
+function init() {
+
+	progressArc.remove();
+	// employees = sortByStart(employees);
+	// employees = sortByDuration(employees);
+	employees = sortByEnd(employees);
+
+    var cx = 100;
+    var cy = 0;
+    var chartHeight = 768;
+    var barWidth = 5;
+    drawBars(cx,cy,chartHeight,barWidth);
+    // drawArcs(cx,cy,chartHeight,barWidth);
+
+    calcHalflife(employees);
+
 
 }
 
