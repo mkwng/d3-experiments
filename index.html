@@ -68,11 +68,12 @@ String.prototype.insert = function (index, string) {
 };
 
 //Employee Class
-function Employee(EMAIL,NAME,DATE) {
+function Employee(EMAIL,NAME,TITLE,DATE) {
 	var email,name,team,title,start,end;
 
 	this.email = EMAIL;
 	this.name = NAME;
+	this.title = TITLE;
 	this.start = DATE;
 	this.end = DATE;
 
@@ -139,7 +140,7 @@ function updateEmployees(newEmployees,date) {
 			}
 		}
 		//Turns out they are new? Let's add them to our array
-		if(newEmployee) employees.push(new Employee(d.EMAIL,d.NAME,date));
+		if(newEmployee) employees.push(new Employee(d.EMAIL,d.NAME,d.TITLE,date));
 	});
 }
 
@@ -303,12 +304,46 @@ function drawArcs() {
 /************************************************/
 /************************************************/
 function calcHalflife(employeeList) {
-	var total = employeeList.length;
-	console.log(total);
-	var employeeStart = sortByStart(employeeList);
-	var employeeEnd = sortByEnd(employeeList);
-	var employeeDuration = sortByDuration(employeeList);
+	var halflife;
+    var maxEnd = d3.max(employeeList, function(d) { return d.end });
+    var minStart = d3.min(employeeList, function(d) { return d.start });
+    var maxStart = maxEnd;
+	halfloop(employeeList);
 
+	function halfloop(loopEmployeeList) {
+		var total = loopEmployeeList.length;
+		var count = 0;
+		var employeeDuration = sortByDuration(loopEmployeeList).reverse();
+		for(var i=0;i<loopEmployeeList.length;i++){
+			//Did this person start after our maxStart date? If so remove them and start over.
+			if(loopEmployeeList[i].start>maxStart) {
+				//Remove this person from the list and start over.
+				// console.log("Started after our max date: "+loopEmployeeList[i].name);
+				var newList = loopEmployeeList;
+				newList.splice(i,1);
+				halfloop(newList);
+				break;
+			}
+			//Is it actually a decay? Or are they still working here?
+			if (loopEmployeeList[i].end==maxEnd) {
+				//Still working here... Update the latest start date we'll accept 
+				maxStart = loopEmployeeList[i].start < maxStart ? loopEmployeeList[i].start : maxStart;
+				//Remove this person from the list and start over.
+				// console.log("Not actually a decay: "+loopEmployeeList[i].name);
+				var newList = loopEmployeeList;
+				newList.splice(i,1);
+				halfloop(newList);
+				break;
+			}
+
+			if(++count/total>.5) {
+				halflife = loopEmployeeList[i].end-loopEmployeeList[i].start;
+				break;
+			}
+
+		}
+	}
+	return halflife;
 }
 
 /************************************************/
@@ -325,18 +360,21 @@ retrieveList("data/list.csv",parseList);
 function init() {
 
 	progressArc.remove();
-	// employees = sortByStart(employees);
+	employees = sortByStart(employees);
 	// employees = sortByDuration(employees);
-	employees = sortByEnd(employees);
+	// employees = sortByEnd(employees);
 
     var cx = 100;
     var cy = 0;
     var chartHeight = 768;
     var barWidth = 5;
-    drawBars(cx,cy,chartHeight,barWidth);
-    // drawArcs(cx,cy,chartHeight,barWidth);
 
-    calcHalflife(employees);
+    // drawBars(cx,cy,chartHeight,barWidth);
+    drawArcs(cx,cy,chartHeight,barWidth);
+
+    var halflife = calcHalflife(employees);
+	console.log("Half life is " + Math.floor(halflife/(1000*60*60*24)) + " days");
+	console.log("Mean lifetime is " + Math.floor((halflife/Math.log(2))/(1000*60*60*24)) + " days");
 
 
 }
