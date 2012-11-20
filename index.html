@@ -187,29 +187,69 @@ function progressLoader(percent) {
 /* Drawing */
 /************************************************/
 /************************************************/
+
+var textgroup,textbox,texts;
+function renderTextbox() {
+	textgroup = svg.append("g").classed("text",true)		
+	.attr({
+		"transform": "translate("+svgWidth/2+","+(svgHeight-40)+")"
+	});
+
+	textgroup.append("rect");
+	textbox = textgroup.select("rect");
+
+	textgroup.append("text");
+	texts = textgroup.select("text");
+
+
+
+	// textgroups.style({"visibility": "visible","z-index":"2"});
+    texts
+    	.text("")
+        .attr({
+          "font-family": "Helvetica",
+          "fill":"#FFFFFF",
+          "text-anchor": "middle",
+          "alignment-baseline": "middle",
+          x: 0,
+          y: 0
+        })
+        // .style("visibility", "hidden");
+    textbox
+    	.attr({
+    		"fill":"#ff6644",
+    		"width":200,
+    		"height":50,
+    		"x":-100,
+    		"y":-25
+    	});
+}
+
 function drawBars(employeeData, args) {
 
+	var employees = employeeData;
+
 	chartHeight = svgHeight;
-	barWidth = Math.floor(svgWidth/employeeData.length)-1;
+	barWidth = Math.floor(svgWidth/employees.length)-1;
 	cx = 0;
 	cy = 0;
 
     //Scaling the duration of employment to the chart height
-    var minTime = d3.min(employeeData, function(d) { return d.end-d.start });
-    var maxTime = d3.max(employeeData, function(d) { return d.end-d.start });
+    var minTime = d3.min(employees, function(d) { return d.end-d.start });
+    var maxTime = d3.max(employees, function(d) { return d.end-d.start });
     var rangeScale = d3.scale.linear()
     	.domain([0,maxTime])
     	.range([3,chartHeight]);
     //Scaling the start date to the chart height
-    var minStart = d3.min(employeeData, function(d) { return d.start });
-    var maxStart = d3.max(employeeData, function(d) { return d.start });
+    var minStart = d3.min(employees, function(d) { return d.start });
+    var maxStart = d3.max(employees, function(d) { return d.start });
 	var startScale = d3.scale.linear()
 		.domain([0,maxStart-minStart])
 		.range([0,chartHeight]);
 
 	//Select the SVG element, append groups
 	var bars = svg.selectAll("g.bar")
-		.data(employeeData);
+		.data(employees);
 	//Enter the data, apply class, transform it
 	var barEnter = bars.enter()
 		.append("g")
@@ -226,8 +266,15 @@ function drawBars(employeeData, args) {
 	//Append SVG rects to each data point
 	barEnter.append("rect")
         .attr("fill", "#F1F2F2")
-        .attr("height", 0);
+        .attr("height", 0)
+        .attr("title", function(d){return d.name})
+        .classed("data",true);
+    //Create a group that contains everything
+    barEnter.append("g").classed("text",true);
+
+    //Create the actual bar of the graph
 	var rects = bars.select("rect");
+
 	//Set the attributes to reflect the data
 	rects
 		.attr({
@@ -237,26 +284,35 @@ function drawBars(employeeData, args) {
 							}
 		});
 
-	rects.on("mouseover", function() {
-        d3.select(this).attr("fill", "#ff6644")
+
+
+	bars.on("mouseover", function() {
+        d3.select(this).select("rect").attr("fill", "#ff6644")
+        textgroup.style("visibility", "visible");
+        // console.log(d3.select(this).select("rect").attr("title"));
+        texts.text(d3.select(this).select("rect").attr("title"))
 	}).on("mouseout", function() {
-        d3.select(this).attr("fill", "#F1F2F2")
+        d3.select(this).select("rect").attr("fill", "#F1F2F2")
+        d3.select(this).select("g.text").style("visibility", "hidden");
 	});
+	renderTextbox();
+
+
 }
 
 function drawArcs(employeeData,args) {
-
+	var employees = employeeData;
     //Scaling the start date to the chart height
-    var minStart = d3.min(employeeData, function(d) { return d.start });
-    var maxEnd = d3.max(employeeData, function(d) { return d.end });
+    var minStart = d3.min(employees, function(d) { return d.start });
+    var maxEnd = d3.max(employees, function(d) { return d.end });
 	var startScale = d3.scale.linear()
 		.domain([minStart,maxEnd])
 		.range([Math.PI/2,2.5*Math.PI]);
 	var maxDimension = Math.min(svgWidth,svgHeight)/2;
 	var radiusScale = d3.scale.linear()
-		.domain([0,employeeData.length])
+		.domain([0,employees.length])
 		.range([0,maxDimension]);
-	// console.log(maxDimension,employeeData.length);
+	// console.log(maxDimension,employees.length);
 
 
 	var arcProps = d3.svg.arc()
@@ -267,7 +323,7 @@ function drawArcs(employeeData,args) {
 
 	//Select the SVG element, append groups
 	var arcs = svg.selectAll("g.arc")
-		.data(employeeData);
+		.data(employees);
 	//Enter the data, apply class, transform it
 	var arcEnter = arcs.enter()
 		.append("g")
@@ -284,7 +340,8 @@ function drawArcs(employeeData,args) {
 	//Append SVG rects to each data point
 	arcEnter.append("path")
         .attr("fill", "#F1F2F2")
-		.attr("d",arcProps);
+		.attr("d",arcProps)
+		.attr("title", function(d){return d.name});
 	var paths = arcs.select("path");
 	//Set the attributes to reflect the data
 	// paths
@@ -292,9 +349,13 @@ function drawArcs(employeeData,args) {
 
 	paths.on("mouseover", function() {
         d3.select(this).attr("fill", "#ff6644")
+        textgroup.style("visibility", "visible");
+        // console.log(d3.select(this).select("rect").attr("title"));
+        texts.text(d3.select(this).attr("title"))
 	}).on("mouseout", function() {
         d3.select(this).attr("fill", "#F1F2F2")
 	});
+	renderTextbox();
 
 }
 
@@ -361,8 +422,8 @@ retrieveList("data/list.csv",parseList);
 function init() {
 
 	progressArc.remove();
-	employees = sortByStart(employees);
-	// employees = sortByDuration(employees);
+	// employees = sortByStart(employees);
+	employees = sortByDuration(employees);
 	// employees = sortByEnd(employees);
 
     var cx = 100;
