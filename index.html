@@ -184,32 +184,32 @@ function progressLoader(percent) {
 
 /************************************************/
 /************************************************/
-/* Drawing the Bar Chart */
+/* Drawing */
 /************************************************/
 /************************************************/
-function drawBars(cx,cy,chartHeight,barWidth) {
+function drawBars(employeeData, args) {
 
 	chartHeight = svgHeight;
-	barWidth = Math.floor(svgWidth/employees.length)-1;
+	barWidth = Math.floor(svgWidth/employeeData.length)-1;
 	cx = 0;
 	cy = 0;
 
     //Scaling the duration of employment to the chart height
-    var minTime = d3.min(employees, function(d) { return d.end-d.start });
-    var maxTime = d3.max(employees, function(d) { return d.end-d.start });
+    var minTime = d3.min(employeeData, function(d) { return d.end-d.start });
+    var maxTime = d3.max(employeeData, function(d) { return d.end-d.start });
     var rangeScale = d3.scale.linear()
     	.domain([0,maxTime])
     	.range([3,chartHeight]);
     //Scaling the start date to the chart height
-    var minStart = d3.min(employees, function(d) { return d.start });
-    var maxStart = d3.max(employees, function(d) { return d.start });
+    var minStart = d3.min(employeeData, function(d) { return d.start });
+    var maxStart = d3.max(employeeData, function(d) { return d.start });
 	var startScale = d3.scale.linear()
 		.domain([0,maxStart-minStart])
 		.range([0,chartHeight]);
 
 	//Select the SVG element, append groups
 	var bars = svg.selectAll("g.bar")
-		.data(employees);
+		.data(employeeData);
 	//Enter the data, apply class, transform it
 	var barEnter = bars.enter()
 		.append("g")
@@ -244,19 +244,19 @@ function drawBars(cx,cy,chartHeight,barWidth) {
 	});
 }
 
-function drawArcs() {
+function drawArcs(employeeData,args) {
 
     //Scaling the start date to the chart height
-    var minStart = d3.min(employees, function(d) { return d.start });
-    var maxEnd = d3.max(employees, function(d) { return d.end });
+    var minStart = d3.min(employeeData, function(d) { return d.start });
+    var maxEnd = d3.max(employeeData, function(d) { return d.end });
 	var startScale = d3.scale.linear()
 		.domain([minStart,maxEnd])
 		.range([Math.PI/2,2.5*Math.PI]);
 	var maxDimension = Math.min(svgWidth,svgHeight)/2;
 	var radiusScale = d3.scale.linear()
-		.domain([0,employees.length])
+		.domain([0,employeeData.length])
 		.range([0,maxDimension]);
-	// console.log(maxDimension,employees.length);
+	// console.log(maxDimension,employeeData.length);
 
 
 	var arcProps = d3.svg.arc()
@@ -267,7 +267,7 @@ function drawArcs() {
 
 	//Select the SVG element, append groups
 	var arcs = svg.selectAll("g.arc")
-		.data(employees);
+		.data(employeeData);
 	//Enter the data, apply class, transform it
 	var arcEnter = arcs.enter()
 		.append("g")
@@ -337,6 +337,7 @@ function calcHalflife(employeeList) {
 			}
 
 			if(++count/total>.5) {
+				if(total<10) return "Sample size too small";
 				halflife = loopEmployeeList[i].end-loopEmployeeList[i].start;
 				break;
 			}
@@ -369,8 +370,8 @@ function init() {
     var chartHeight = 768;
     var barWidth = 5;
 
-    // drawBars(cx,cy,chartHeight,barWidth);
-    drawArcs(cx,cy,chartHeight,barWidth);
+    // drawBars(employees,{cx:"cx",cy:"cy",chartHeight:"chartHeight",barWidth:"barWidth"});
+    drawArcs(employees,{cx:"cx",cy:"cy",chartHeight:"chartHeight",barWidth:"barWidth"});
 
     var halflife = calcHalflife(employees);
 	console.log("Half life is " + Math.floor(halflife/(1000*60*60*24)) + " days");
