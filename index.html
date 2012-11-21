@@ -40,7 +40,7 @@ var svg = d3.select("#chart").style({
 function sortByStart(employeeList) {
 	function compareStart(a,b) {
 		var start = a.start-b.start;
-		return start == 0 ? a.end-b.end : start;
+		return start;
 	}
 	return employeeList.sort(compareStart);
 }
@@ -137,9 +137,9 @@ function updateEmployees(newEmployees,date) {
 		//Assume this employee is new until proven otherwise.
 		var newEmployee = true;
 		for (var i = 0, len = employees.length; i < len; i++) {
-			//Is this email already in our array? 
+			//Is this name already in our array? 
 			//If so, they are not new. Let's update their start/end date.
-			if(employees[i].email == d.EMAIL) {
+			if(employees[i].name == d.NAME) {
 				newEmployee = false;
 				if(employees[i].start > date) employees[i].start = date;
 				else if(employees[i].end < date) employees[i].end = date;
@@ -487,9 +487,9 @@ function init() {
     drawBars(employees,{sort:"start",cx:"cx",cy:"cy",chartHeight:"chartHeight",barWidth:"barWidth"});
     // drawArcs(employees,{sort:"start",cx:"cx",cy:"cy",chartHeight:"chartHeight",barWidth:"barWidth"});
 
- //    var halflife = calcHalflife(employees);
-	// console.log("Half life is " + Math.floor(halflife/(1000*60*60*24)) + " days");
-	// console.log("Mean lifetime is " + Math.floor((halflife/Math.log(2))/(1000*60*60*24)) + " days");
+    var halflife = calcHalflife(employees);
+	console.log("Half life is " + Math.floor(halflife/(1000*60*60*24)) + " days");
+	console.log("Mean lifetime is " + Math.floor((halflife/Math.log(2))/(1000*60*60*24)) + " days");
 
 
 }
