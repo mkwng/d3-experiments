@@ -18,6 +18,7 @@
 
 
 <script src="js/vendor/d3.v2.min.js"></script>
+<script src="js/vendor/dat.gui.js"></script>
 <script>
 
 /************************************************/
@@ -66,6 +67,12 @@ String.prototype.insert = function (index, string) {
   else
     return string + this;
 };
+
+//Finding an object in an array
+//http://stackoverflow.com/questions/143847/best-way-to-find-an-item-in-a-javascript-array
+function include(arr,obj) {
+    return arr.indexOf(obj);
+}
 
 //Employee Class
 function Employee(EMAIL,NAME,TITLE,DATE) {
@@ -180,6 +187,27 @@ function progressLoader(percent) {
 }
 
 
+/************************************************/
+/************************************************/
+/* Dat GUI workshop.chromeexperiments.com */
+/************************************************/
+/************************************************/
+function renderGui(settings) {
+
+	var gui = new dat.GUI();
+	var typeController = gui.add(settings, 'type', [ 'bar', 'arc'] );
+	var sortController = gui.add(settings, 'sort', [ 'start', 'end', 'duration'] );
+
+	typeController.onChange(function() {
+		if(settings.type=='bar') drawBars(employees,{sort:settings.sort});
+		else if(settings.type=='arc') drawArcs(employees,{sort:settings.sort});
+	});
+	sortController.onChange(function() {
+		if(settings.type=='bar') drawBars(employees,{sort:settings.sort});
+		else if(settings.type=='arc') drawArcs(employees,{sort:settings.sort});
+	});
+}
+
 
 
 /************************************************/
@@ -187,6 +215,10 @@ function progressLoader(percent) {
 /* Drawing */
 /************************************************/
 /************************************************/
+var GraphProps = function() {
+	this.type = 'bar';
+	this.sort = 'start';
+}
 
 var textgroup,textbox,texts;
 function renderTextbox() {
@@ -203,7 +235,7 @@ function renderTextbox() {
 
 
 
-	// textgroups.style({"visibility": "visible","z-index":"2"});
+	textgroup.style({"visibility": "hidden","z-index":"2"});
     texts
     	.text("")
         .attr({
@@ -213,8 +245,7 @@ function renderTextbox() {
           "alignment-baseline": "middle",
           x: 0,
           y: 0
-        })
-        // .style("visibility", "hidden");
+        });
     textbox
     	.attr({
     		"fill":"#ff6644",
@@ -227,7 +258,9 @@ function renderTextbox() {
 
 function drawBars(employeeData, args) {
 
-	var employees = employeeData;
+	svg.selectAll("g.arc").remove()
+
+	var employees =  employeeData.slice(0);
 
 	chartHeight = svgHeight;
 	barWidth = Math.floor(svgWidth/employees.length)-1;
@@ -247,61 +280,66 @@ function drawBars(employeeData, args) {
 		.domain([0,maxStart-minStart])
 		.range([0,chartHeight]);
 
-	//Select the SVG element, append groups
+
+	if(args.sort == "start") {
+		var employees2 = sortByStart(employeeData.slice(0));
+	} else if(args.sort == "duration") {
+		var employees2 = sortByDuration(employeeData.slice(0));
+	} else if(args.sort == "end") {
+		var employees2 = sortByEnd(employeeData.slice(0));
+	}
+
+
+	//D3 Step 1/3: Update...
 	var bars = svg.selectAll("g.bar")
-		.data(employees);
-	//Enter the data, apply class, transform it
+		.data(employeeData);
+
+	//D3 Step 2/3: Enter...
 	var barEnter = bars.enter()
 		.append("g")
-		.classed("bar",true)
-		.attr({
-			"transform": 	function(d,i) {
-								var x = cx+ i * (barWidth+1);
-								var y = startScale(d.start-minStart);
-								// console.log(startScale(d.start-minStart));
-								return "translate("+[x,y]+")";
-							}
-		});
+			.classed("bar",true)
+		.append("rect")
+	        .attr("fill", "#F1F2F2")
+	        .attr("height", 0)
+	        .classed("data",true);
 
-	//Append SVG rects to each data point
-	barEnter.append("rect")
-        .attr("fill", "#F1F2F2")
-        .attr("height", 0)
-        .attr("title", function(d){return d.name})
-        .classed("data",true);
-    //Create a group that contains everything
-    barEnter.append("g").classed("text",true);
+	//Transitioning
+	bars.transition().attr({
+		"transform": 	function(d) {
+							var x = cx + employees2.indexOf(d) * (barWidth+1);
+							var y = startScale(d.start-minStart);
+							return "translate("+[x,y]+")";
+						}
+	});
+	bars.select("rect").transition().attr({
+		"width": barWidth,
+		"height": function(d) {return rangeScale(d.end-d.start);}
+	})
+	    .attr("title", function(d){return d.name});
 
-    //Create the actual bar of the graph
-	var rects = bars.select("rect");
+	//D3 Step 3/3: Exit...
+	bars.exit().remove();
 
-	//Set the attributes to reflect the data
-	rects
-		.attr({
-			"width": barWidth,
-			"height": 		function(d,i) {
-								return rangeScale(d.end-d.start);
-							}
-		});
-
-
+	renderTextbox();
 
 	bars.on("mouseover", function() {
         d3.select(this).select("rect").attr("fill", "#ff6644")
         textgroup.style("visibility", "visible");
-        // console.log(d3.select(this).select("rect").attr("title"));
         texts.text(d3.select(this).select("rect").attr("title"))
 	}).on("mouseout", function() {
         d3.select(this).select("rect").attr("fill", "#F1F2F2")
-        d3.select(this).select("g.text").style("visibility", "hidden");
+        textgroup.style("visibility", "hidden");
 	});
-	renderTextbox();
 
 
 }
 
 function drawArcs(employeeData,args) {
-	var employees = employeeData;
+
+	svg.selectAll("g.bar").remove()
+
+	var employees = employeeData.slice(0);
+
     //Scaling the start date to the chart height
     var minStart = d3.min(employees, function(d) { return d.start });
     var maxEnd = d3.max(employees, function(d) { return d.end });
@@ -312,50 +350,58 @@ function drawArcs(employeeData,args) {
 	var radiusScale = d3.scale.linear()
 		.domain([0,employees.length])
 		.range([0,maxDimension]);
-	// console.log(maxDimension,employees.length);
 
 
-	var arcProps = d3.svg.arc()
-	    .outerRadius(function(d,i) {return radiusScale(i+1)-1;})
-	    .innerRadius(function(d,i) {return radiusScale(i);})
-	    .startAngle(function(d,i) {return startScale(d.start);})
-	    .endAngle(function(d,i) {return startScale(d.end);});
 
-	//Select the SVG element, append groups
+	if(args.sort == "start") {
+		var employees2 = sortByStart(employeeData.slice(0));
+	} else if(args.sort == "duration") {
+		var employees2 = sortByDuration(employeeData.slice(0));
+	} else if(args.sort == "end") {
+		var employees2 = sortByEnd(employeeData.slice(0));
+	}
+
+	//D3 Step 1/3: Update...
 	var arcs = svg.selectAll("g.arc")
 		.data(employees);
-	//Enter the data, apply class, transform it
+
+	//D3 Step 2/3: Enter...
 	var arcEnter = arcs.enter()
 		.append("g")
-		.classed("arc",true)
-		.attr({
-			"transform": 	function(d,i) {
-								var x = svgWidth/2;
-								var y = svgHeight/2;
-								// console.log(startScale(d.start-minStart));
-								return "translate("+[x,y]+")";
-							}
-		});
+			.classed("arc",true)
+		.append("path")
+	        .attr("fill", "#F1F2F2")
+			.attr("title", function(d){return d.name});
 
-	//Append SVG rects to each data point
-	arcEnter.append("path")
-        .attr("fill", "#F1F2F2")
-		.attr("d",arcProps)
-		.attr("title", function(d){return d.name});
-	var paths = arcs.select("path");
-	//Set the attributes to reflect the data
-	// paths
-	// 	.attr("d",arcProps);
+	var arcProps = d3.svg.arc()
+	    .outerRadius(function(d) {return radiusScale(employees2.indexOf(d)+1)-1;})
+	    .innerRadius(function(d) {return radiusScale(employees2.indexOf(d));})
+	    .startAngle(function(d) {return startScale(d.start);})
+	    .endAngle(function(d) {return startScale(d.end);});
 
-	paths.on("mouseover", function() {
-        d3.select(this).attr("fill", "#ff6644")
-        textgroup.style("visibility", "visible");
-        // console.log(d3.select(this).select("rect").attr("title"));
-        texts.text(d3.select(this).attr("title"))
-	}).on("mouseout", function() {
-        d3.select(this).attr("fill", "#F1F2F2")
-	});
+	arcs.transition().attr({
+		"transform": 	function(d) {
+							var x = svgWidth/2;
+							var y = svgHeight/2;
+							return "translate("+[x,y]+")";
+						}
+	})
+	arcs.select("path").transition().attr("d",arcProps);
+
+	//D3 Step 3/3: Exit...
+	arcs.exit().remove();
+
 	renderTextbox();
+
+	arcs.on("mouseover", function() {
+        d3.select(this).select("path").attr("fill", "#ff6644")
+        textgroup.style("visibility", "visible");
+        texts.text(d3.select(this).select("path").attr("title"))
+	}).on("mouseout", function() {
+        d3.select(this).select("path").attr("fill", "#F1F2F2")
+        textgroup.style("visibility", "hidden");
+	});
+
 
 }
 
@@ -364,8 +410,11 @@ function drawArcs(employeeData,args) {
 /* Analysis */
 /************************************************/
 /************************************************/
-function calcHalflife(employeeList) {
+function calcHalflife(employees) {
 	var halflife;
+
+	//http://stackoverflow.com/questions/597588/how-do-you-clone-an-array-of-objects-in-javascript
+	var employeeList = employees.slice(0);
     var maxEnd = d3.max(employeeList, function(d) { return d.end });
     var minStart = d3.min(employeeList, function(d) { return d.start });
     var maxStart = maxEnd;
@@ -380,7 +429,7 @@ function calcHalflife(employeeList) {
 			if(loopEmployeeList[i].start>maxStart) {
 				//Remove this person from the list and start over.
 				// console.log("Started after our max date: "+loopEmployeeList[i].name);
-				var newList = loopEmployeeList;
+				var newList = loopEmployeeList.slice(0);
 				newList.splice(i,1);
 				halfloop(newList);
 				break;
@@ -391,7 +440,7 @@ function calcHalflife(employeeList) {
 				maxStart = loopEmployeeList[i].start < maxStart ? loopEmployeeList[i].start : maxStart;
 				//Remove this person from the list and start over.
 				// console.log("Not actually a decay: "+loopEmployeeList[i].name);
-				var newList = loopEmployeeList;
+				var newList = loopEmployeeList.slice(0);
 				newList.splice(i,1);
 				halfloop(newList);
 				break;
@@ -422,21 +471,25 @@ retrieveList("data/list.csv",parseList);
 function init() {
 
 	progressArc.remove();
+	var settings = new GraphProps();
+
+	renderGui(settings);
+
 	// employees = sortByStart(employees);
-	employees = sortByDuration(employees);
+	// employees = sortByDuration(employees);
 	// employees = sortByEnd(employees);
 
-    var cx = 100;
+    var cx = 0;
     var cy = 0;
-    var chartHeight = 768;
-    var barWidth = 5;
+    var chartHeight = 0;
+    var barWidth = 0;
 
-    // drawBars(employees,{cx:"cx",cy:"cy",chartHeight:"chartHeight",barWidth:"barWidth"});
-    drawArcs(employees,{cx:"cx",cy:"cy",chartHeight:"chartHeight",barWidth:"barWidth"});
+    drawBars(employees,{sort:"start",cx:"cx",cy:"cy",chartHeight:"chartHeight",barWidth:"barWidth"});
+    // drawArcs(employees,{sort:"start",cx:"cx",cy:"cy",chartHeight:"chartHeight",barWidth:"barWidth"});
 
-    var halflife = calcHalflife(employees);
-	console.log("Half life is " + Math.floor(halflife/(1000*60*60*24)) + " days");
-	console.log("Mean lifetime is " + Math.floor((halflife/Math.log(2))/(1000*60*60*24)) + " days");
+ //    var halflife = calcHalflife(employees);
+	// console.log("Half life is " + Math.floor(halflife/(1000*60*60*24)) + " days");
+	// console.log("Mean lifetime is " + Math.floor((halflife/Math.log(2))/(1000*60*60*24)) + " days");
 
 
 }
